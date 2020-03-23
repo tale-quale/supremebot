@@ -177,28 +177,30 @@ def fill_checkout_form(data_dict):
     '''
 
 
-
-
-def attack_site():
+def parse_site_for_hots():
     r = requests.get('https://www.supremenewyork.com/shop/all')
     soup = BeautifulSoup(r.content, 'lxml')
     new_goods_urls = []
     articles = soup.find_all('article')
     new_goods_urls = get_urls_from_soup(articles)
+    hot_urls = []
     hot_urls = get_hot_urls(new_goods_urls)
+    return hot_urls
 
+def buy(hot_urls):
     prepare_browser_windows()
     prepare_to_checkout(hot_urls)
-
     time.sleep(0.2) # time for server accept last add to cart
-
     fill_checkout_form(info)
-
-    time.sleep(150)
-    driver.quit()
+    time.sleep(15000) # need to complete purchasing
 
 def main():
-    attack_site()
+    while True:
+        hot_urls = parse_site_for_hots()
+        if hot_urls:
+            buy(hot_urls)
+            driver.quit()
+
     # save bad_urls in file for farther using
     #with open(bad_urls_filename, 'w') as f:
         #f.writelines('%s\n' % url for url in bad_urls)
