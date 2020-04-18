@@ -1,13 +1,13 @@
 {
     "bill_shipp_info": {
-        "full name": "Ilya Laptev",
-        "email": "ilialaptev@list.ru",
-        "tel": "+79164345465",
-        "address": "Rozhdestvenskaya, 6", "address2": "40", "address3": "",
-        "country": "RUSSIA", "city": "Moscow", "postcode": "111674"
+        "full name": "Name Surname",
+        "email": "example@email.ru",
+        "tel": "88005553535",
+        "address": "ASD, 6", "address2": "34", "address3": "",
+        "country": "RUSSIA", "city": "Moscow", "postcode": "111111"
     },
     "card_info": {
         "card_type": "Mastercard",
-        "number": "5327 4300 0352 8387", "month": "06", "year": "2021", "cvv": "583"
+        "number": "0000 0000 0000 0000", "month": "12", "year": "2020", "cvv": "123"
     }
 }
