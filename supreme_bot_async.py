@@ -1,6 +1,8 @@
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
 
+import os
+import sys
 import re
 import time
 import json
@@ -16,15 +18,23 @@ import requests
 from bs4 import BeautifulSoup
 from lxml.html import fromstring
 
-# get settings
-with open('/Users/chef/Documents/Develop/Python/resell_bots/info.txt', 'r') as f:
-    info = json.loads(f.read().replace('\n', ''))
 
-driver = webdriver.Chrome('/Users/chef/Documents/Develop/Chrdrv/80/chromedriver')  # Optional argument, if not specified will search path.
+# This is a path to the directory this file is located in
+dirname = os.path.dirname(__file__)
+
+#Adding the Captch solver extention
+chop = webdriver.ChromeOptions()
+chop.add_extension(os.path.join(dirname, 'BusterCaptchaSolver_v0.7.0.crx'))
+
+# Ну какого хрена open такой умный и находит нужный файл. Я не понимаю
+with open('address.txt', 'r') as f:
+    addressInfo_filename = json.loads(f.read().replace('\n', ''))
+
+driver = webdriver.Chrome(chrome_options=chop,executable_path=os.path.join(dirname, 'chromedriver'))  # Settings to add extention, path to the chrome driver
 base_url = 'https://www.supremenewyork.com/'
-hot_filename = '/Users/chef/Documents/Develop/Python/resell_bots/hot.txt'
-bad_urls_filename = '/Users/chef/Documents/Develop/Python/resell_bots/bad_urls.txt'
-hot = [tuple(line.rstrip('\n').split(';')) for line in open(hot_filename, 'r')]
+keywords_filename = os.path.join(dirname, 'keywords.txt')
+bad_urls_filename = os.path.join(dirname, 'bad_urls.txt')
+hot = [tuple(line.rstrip('\n').split(';')) for line in open(keywords_filename, 'r')]
 hot_db = {}
 for e in hot:
     hot_db[e[0]] = (e[1], e[2])
@@ -68,16 +78,27 @@ def get_hot_urls(urls):
     hot_urls = []
     for url in urls:
         r = requests.get(base_url + url)
-        tree = fromstring(r.content)
-        title_durty = tree.findtext('.//title')[9:] # cut 'Supreme:' in the start of the title
-        idx = find_all_indexes(title_durty, ' - ')
-        if idx:
-            title = title_durty[:idx[-1]].strip()
+        # tree = fromstring(r.content)
+        # title_durty = tree.findtext('.//title')[9:] # cut 'Supreme:' in the start of the title
+        # idx = find_all_indexes(title_durty, ' - ')
+        # if idx:
+        # title = title_durty[:idx[0]].strip()
+        soup = BeautifulSoup(r.content, 'lxml')
+        # titles = soup.find_all({'itemprop': 'name'})
+        titles = soup.find_all(itemprop='name')
+        title = titles[0].text.strip()
+
         if title in hot_db:
             hot_one = hot_db.get(title)
             soup = BeautifulSoup(r.content, 'lxml')
-            colors_tags = soup.find_all('a', {'data-style-name' : re.compile(hot_one[0])})
-            hot_urls.append(colors_tags[0]['href'])
+            colors_tags = soup.find_all(['button','a'], {'data-style-name' : re.compile(hot_one[0])})
+            if colors_tags[0].name == 'a':
+                attr = "href"
+            elif colors_tags[0].name == 'button':
+                attr = "data-url"
+
+
+            hot_urls.append(colors_tags[0][attr])
         else:
             bad_urls.append(url)
 
@@ -111,7 +132,8 @@ def prepare_to_checkout(hot_urls):
         driver.get(base_url + url)
         soup = BeautifulSoup(driver.page_source, 'lxml')
 
-        title = soup.find('h1', {'itemprop': 'name'})
+        title = soup.find(itemprop = 'name')
+
         if title:
             good_entity = hot_db.get(title.text.strip())
 
@@ -141,12 +163,12 @@ def fill_checkout_form(data_dict):
     tel = driver.find_element_by_id('order_tel')
     address = driver.find_element_by_id('bo')
     address2 = driver.find_element_by_id('oba3')
-    address3 = driver.find_element_by_id('order_billing_address_3')
+    # address3 = driver.find_element_by_id('order_billing_address_3')
     city = driver.find_element_by_id('order_billing_city')
     postcode = driver.find_element_by_id('order_billing_zip')
 
-    number = driver.find_element_by_id('cnb')
-    cvv = driver.find_element_by_id('vval')
+    number = driver.find_element_by_id('rnsnckrn')
+    cvv = driver.find_element_by_id('orcer')
 
     # fill elements
     full_name.send_keys(data_dict['bill_shipp_info']['full name'])
@@ -158,7 +180,7 @@ def fill_checkout_form(data_dict):
     postcode.send_keys(data_dict['bill_shipp_info']['postcode'])
     process_select_option('order_billing_country', data_dict['bill_shipp_info']['country']) # select
 
-    process_select_option('credit_card_type', data_dict['card_info']['card_type']) # select
+    # process_select_option('credit_card_type', data_dict['card_info']['card_type']) # select
     number.send_keys(data_dict['card_info']['number'])
     process_select_option('credit_card_month', data_dict['card_info']['month']) # select
     process_select_option('credit_card_year', data_dict['card_info']['year']) # select
@@ -179,9 +201,10 @@ def fill_checkout_form(data_dict):
 
 def parse_site_for_hots():
     r = requests.get('https://www.supremenewyork.com/shop/all')
+    #print(r.content)
     soup = BeautifulSoup(r.content, 'lxml')
     new_goods_urls = []
-    articles = soup.find_all('article')
+    articles = soup.find_all('div', {'class' : 'inner-article'})
     new_goods_urls = get_urls_from_soup(articles)
     hot_urls = []
     hot_urls = get_hot_urls(new_goods_urls)
@@ -191,19 +214,21 @@ def buy(hot_urls):
     prepare_browser_windows()
     prepare_to_checkout(hot_urls)
     time.sleep(0.2) # time for server accept last add to cart
-    fill_checkout_form(info)
-    time.sleep(15000) # need to complete purchasing
+    fill_checkout_form(addressInfo_filename)
+    time.sleep(1000) # need to complete purchasing
 
 def main():
-    while True:
-        hot_urls = parse_site_for_hots()
-        if hot_urls:
-            buy(hot_urls)
-            driver.quit()
-
-    # save bad_urls in file for farther using
-    #with open(bad_urls_filename, 'w') as f:
-        #f.writelines('%s\n' % url for url in bad_urls)
+    # while True:
+    hot_urls = parse_site_for_hots()
+    # with open(bad_urls_filename, 'w') as f:
+        # f.writelines('%s\n' % url for url in bad_urls)
+    if hot_urls:
+        buy(hot_urls)
+        driver.quit()
+        #exit line to end the program after the driver ended
+        sys.exit()
+    # save bad_urls in file for further using
+    
 
 if __name__ == '__main__':
     print(datetime.now())

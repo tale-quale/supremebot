@@ -1,0 +1,13 @@
+{
+    "bill_shipp_info": {
+        "full name": "Name Surname",
+        "email": "example@email.ru",
+        "tel": "88005553535",
+        "address": "ASD, 6", "address2": "34", "address3": "",
+        "country": "CANADA", "city": "Moscow", "postcode": "L5Y5G3"
+    },
+    "card_info": {
+        "card_type": "Mastercard",
+        "number": "0000 0000 0000 0000", "month": "12", "year": "2021", "cvv": "123"
+    }
+}
